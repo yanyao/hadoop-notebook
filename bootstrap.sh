@@ -13,15 +13,30 @@ cd $HADOOP_PREFIX/share/hadoop/common ; for cp in ${ACP//,/ }; do  echo == $cp; 
 sed s/HOSTNAME/$HOSTNAME/ /usr/local/hadoop/etc/hadoop/core-site.xml.template > /usr/local/hadoop/etc/hadoop/core-site.xml
 
 
-service sshd start
+export USER=root
+
+sed -i '/<\/configuration>/d' $HADOOP_PREFIX/etc/hadoop/yarn-site.xml
+if [[ -n $MEM_LIMIT ]];then
+   MEM_LIMIT=$((MEM_LIMIT/1048576))
+fi
+if [[ -n $CPU_LIMIT ]];then
+   CPU_LIMIT=${CPU_LIMIT%%.*}
+fi
+
+cat >> $HADOOP_PREFIX/etc/hadoop/yarn-site.xml <<- EOM
+<property>
+  <name>yarn.nodemanager.resource.memory-mb</name>
+  <value>${MEM_LIMIT:-2048}</value>
+</property>
+
+<property>
+  <name>yarn.nodemanager.resource.cpu-vcores</name>
+  <value>${MY_CPU_LIMIT:-2}</value>
+</property>
+EOM
+echo '</configuration>' >> $HADOOP_PREFIX/etc/hadoop/yarn-site.xml
+
+service ssh start
 $HADOOP_PREFIX/sbin/start-dfs.sh
 $HADOOP_PREFIX/sbin/start-yarn.sh
 $HADOOP_PREFIX/sbin/mr-jobhistory-daemon.sh start historyserver
-
-if [[ $1 == "-d" ]]; then
-  while true; do sleep 1000; done
-fi
-
-if [[ $1 == "-bash" ]]; then
-  /bin/bash
-fi
